@@ -50,6 +50,15 @@ private:
     type_safe::optional_ref<const cpp_template> templ_;
 };
 
+struct cpp_source_code_location
+{
+    std::string  file;
+    unsigned int line_begin;
+    unsigned int column_begin;
+    unsigned int line_end;
+    unsigned int column_end;
+};
+
 /// The base class for all entities in the C++ AST.
 class cpp_entity : detail::intrusive_list_node<cpp_entity>
 {
@@ -137,7 +146,18 @@ public:
     /// \effects Adds multiple arguments for that entity.
     void add_attribute(const cpp_attribute_list& list) noexcept
     {
+<<<<<<< HEAD
         attributes_.insert(attributes_.end(), list.begin(), list.end());
+    }
+
+    type_safe::optional<cpp_source_code_location> location()const
+    {
+        return location_;
+    }
+
+    void set_location(type_safe::optional<cpp_source_code_location> loc)
+    {
+        location_ = loc;
     }
 
     /// \returns The specified user data.
@@ -182,6 +202,8 @@ private:
     cpp_attribute_list                        attributes_;
     type_safe::optional_ref<const cpp_entity> parent_;
     mutable std::atomic<void*>                user_data_;
+    
+    type_safe::optional<cpp_source_code_location> location_;
 
     template <typename T>
     friend struct detail::intrusive_list_access;

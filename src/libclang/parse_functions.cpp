@@ -104,6 +104,28 @@ bool is_friend(const CXCursor& parent_cur)
 {
     return clang_getCursorKind(parent_cur) == CXCursor_FriendDecl;
 }
+
+inline cpp_source_code_location make_full_location(const CXCursor& cur)
+{
+    auto ext       = clang_getCursorExtent(cur);
+    auto cur_begin = clang_getRangeStart(ext);
+
+    CXFile   file;
+    unsigned line_begin;
+    unsigned column_begin;
+    clang_getSpellingLocation(cur_begin, &file, &line_begin, &column_begin, nullptr);
+
+    auto cur_end = clang_getRangeEnd(ext);
+
+    unsigned line_end;
+    unsigned column_end;
+    clang_getSpellingLocation(cur_end, nullptr, &line_end, &column_end, nullptr);
+
+    auto filename = detail::cxstring(clang_getFileName(file));
+
+    return cpp_source_code_location{filename.c_str(),
+                                    line_begin, column_begin, line_end, column_end};
+}
 } // namespace
 
 std::unique_ptr<cpp_entity> detail::parse_entity(const detail::parse_context& context,
@@ -118,6 +140,9 @@ std::unique_ptr<cpp_entity> detail::parse_entity(const detail::parse_context& co
                                               detail::get_cursor_kind_spelling(cur).c_str(), "'"));
     }
 
+    auto src_location = make_full_location(cur);
+
+    auto result_entity = [&]() -> std::unique_ptr<cpp_entity> {
     auto kind = clang_getCursorKind(cur);
     switch (kind)
     {
@@ -235,6 +260,12 @@ std::unique_ptr<cpp_entity> detail::parse_entity(const detail::parse_context& co
     }
     else
         return nullptr;
+    }();
+
+    if (result_entity)
+        result_entity->set_location(src_location);
+
+    return result_entity;
 }
 catch (parse_error& ex)
 {
