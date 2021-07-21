@@ -232,18 +232,28 @@ class cpp_auto_type final : public cpp_type
 {
 public:
     /// \returns A newly created `auto` type.
-    static std::unique_ptr<cpp_auto_type> build()
+    static std::unique_ptr<cpp_auto_type> build(std::unique_ptr<cpp_type> deduced_type={})
     {
-        return std::unique_ptr<cpp_auto_type>(new cpp_auto_type);
+        return std::unique_ptr<cpp_auto_type>(new cpp_auto_type(std::move(deduced_type)));
+    }
+
+    /// \returns A reference to the [cppast::cpp_type]() that was deduced for auto.
+    type_safe::optional_ref<const cpp_type> deduced_type() const noexcept
+    {
+        return type_safe::opt_cref(type_.get());
     }
 
 private:
-    cpp_auto_type() = default;
+    cpp_auto_type(std::unique_ptr<cpp_type> type)
+        : type_(std::move(type)) {
+    }
 
     cpp_type_kind do_get_kind() const noexcept override
     {
         return cpp_type_kind::auto_t;
     }
+
+    std::unique_ptr<cpp_type> type_;
 };
 
 class cpp_template_parameter_type;
@@ -322,6 +332,15 @@ public:
         DEBUG_ASSERT(cv != cpp_cv_none, detail::precondition_error_handler{});
         return std::unique_ptr<cpp_cv_qualified_type>(
             new cpp_cv_qualified_type(std::move(type), cv));
+    }
+    
+    /// \returns A newly created qualified type.
+    /// \requires `cv` must not be [cppast::cpp_cv::cpp_cv_none]().
+    static std::unique_ptr<cpp_cv_qualified_type> build(cpp_cv_qualified_type&& type, cpp_cv cv)
+    {
+        DEBUG_ASSERT(cv != cpp_cv_none, detail::precondition_error_handler{});
+        return std::unique_ptr<cpp_cv_qualified_type>(
+            new cpp_cv_qualified_type(std::move(type.type_), cv));
     }
 
     /// \returns A reference to the [cppast::cpp_type]() that is qualified.

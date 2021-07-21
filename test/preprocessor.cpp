@@ -59,7 +59,7 @@ TEST_CASE("preprocessing use external macro")
     auto file = parse({}, "preprocessing_external_macro.cpp", R"(
 #include <climits>
 
-/// auto result=8;
+/// int result=8;
 auto result = CHAR_BIT;
 )",
                       fast_preprocessing);

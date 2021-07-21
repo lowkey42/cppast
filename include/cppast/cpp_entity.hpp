@@ -146,7 +146,6 @@ public:
     /// \effects Adds multiple arguments for that entity.
     void add_attribute(const cpp_attribute_list& list) noexcept
     {
-<<<<<<< HEAD
         attributes_.insert(attributes_.end(), list.begin(), list.end());
     }
 

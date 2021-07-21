@@ -255,9 +255,12 @@ void write_user_defined(code_generator::output& output, const cpp_user_defined_t
     output << type.entity();
 }
 
-void write_auto(code_generator::output& output, const cpp_auto_type&)
+void write_auto(code_generator::output& output, const cpp_auto_type& type)
 {
-    output << keyword("auto");
+    if(type.deduced_type().has_value())
+        write_type(output, type.deduced_type().value(), "");
+    else
+        output << keyword("auto");
 }
 
 void write_decltype(code_generator::output& output, const cpp_decltype_type& type)

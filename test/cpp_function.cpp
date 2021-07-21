@@ -64,6 +64,9 @@ ns::m m();
 
 /// void n(int i=int());
 void n(int i = int());
+
+/// int o(int i);
+auto o(int i) {return i+2;}
 )";
 
     auto check_body = [](const cpp_function& func, cpp_function_body_kind kind) {
@@ -268,10 +271,19 @@ void n(int i = int());
             REQUIRE(func.storage_class() == cpp_storage_class_none);
             check_body(func, cpp_function_declaration);
         }
+        else if (func.name() == "o")
+        {
+            REQUIRE(equal_types(idx, func.return_type(), *cpp_auto_type::build(cpp_builtin_type::build(cpp_int))));
+            REQUIRE(count_children(func.parameters()) == 1u);
+            REQUIRE(!func.is_variadic());
+            REQUIRE(!func.noexcept_condition());
+            REQUIRE(!func.is_constexpr());
+            check_body(func, cpp_function_definition);
+        }
         else
             REQUIRE(false);
     });
-    REQUIRE(count == 15u);
+    REQUIRE(count == 16u);
 }
 
 TEST_CASE("consteval cpp_function")

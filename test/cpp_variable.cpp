@@ -43,9 +43,9 @@ struct baz {} k{};
 static struct {} l;
 
 // auto
-/// auto m=128;
+/// int m=128;
 auto m = 128;
-/// auto const& n=m;
+/// int const const& n=m;
 const auto& n = m;
 
 // decltype

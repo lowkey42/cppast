@@ -133,6 +133,36 @@ cpp_cv suffix_cv(std::string& spelling)
     return cv;
 }
 
+CXType deduce_auto_return_type(const CXCursor& cur, const CXType& type) {
+	auto deduced_type = clang_getCanonicalType(type);
+
+	if(deduced_type.kind==CXType_Auto || deduced_type.kind==CXType_Invalid) {
+		// find any return statement and use its type
+
+		auto get_type = [](CXCursor cur, CXCursor, CXClientData data) {
+            auto& result = *static_cast<CXType*>(data);
+			auto type = clang_getCursorType(cur);
+			if(type.kind!=CXType_Auto && type.kind!=CXType_Invalid) {
+				result = type;
+				return CXChildVisit_Break;
+			}
+
+            return CXChildVisit_Recurse;
+        };
+
+		detail::visit_children(cur, [&](const CXCursor& child) {
+			if(child.kind==CXCursor_ReturnStmt) {
+				clang_visitChildren(child, get_type, &deduced_type);
+			}
+		}, true);
+	}
+
+	if(deduced_type.kind==CXType_Invalid)
+		deduced_type = type;
+
+    return deduced_type;
+}
+	
 // const/volatile at the beginning
 cpp_cv prefix_cv(std::string& spelling)
 {
@@ -200,9 +230,17 @@ cpp_cv merge_cv(cpp_cv a, cpp_cv b)
 
 std::unique_ptr<cpp_type> make_cv_qualified(std::unique_ptr<cpp_type> entity, cpp_cv cv)
 {
-    if (cv == cpp_cv_none)
+    if (cv == cpp_cv_none) {
         return entity;
-    return cpp_cv_qualified_type::build(std::move(entity), cv);
+        
+    } else if(entity->kind()==cpp_type_kind::cv_qualified_t) {
+    	auto& e = dynamic_cast<cpp_cv_qualified_type&>(*entity);
+    	auto existing_cv = e.cv_qualifier();
+    	return cpp_cv_qualified_type::build(std::move(e), merge_cv(existing_cv, cv));
+    	
+    } else { 
+    	return cpp_cv_qualified_type::build(std::move(entity), cv);
+    }
 }
 
 template <typename Builder>
@@ -673,7 +711,14 @@ std::unique_ptr<cpp_type> parse_type_impl(const detail::parse_context& context, 
         return cpp_pointer_type::build(parse_member_pointee_type(context, cur, type));
 
     case CXType_Auto:
-        return make_leave_type(cur, type, [&](std::string&&) { return cpp_auto_type::build(); });
+        return make_leave_type(cur, type,
+                               [&](std::string&&) {
+            auto deduced_type = deduce_auto_return_type(cur, type);
+            if(deduced_type.kind!=CXType_Auto)
+                return cpp_auto_type::build(parse_type_impl(context, cur, deduced_type));
+            else
+                return cpp_auto_type::build(std::unique_ptr<cpp_type>{});
+        });
     }
 }
 } // namespace
